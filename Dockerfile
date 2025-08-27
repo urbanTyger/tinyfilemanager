@@ -12,15 +12,57 @@ FROM php:8.3-cli-alpine
 # if run in China
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
-# Install required packages for ARM64 and x86_64
+# Install multimedia and image processing packages
 RUN apk add --no-cache \
+    # Basic dependencies
     libzip-dev \
     oniguruma-dev \
+    # Image processing
+    libjpeg-turbo-dev \
+    libpng-dev \
+    libwebp-dev \
+    freetype-dev \
+    imagemagick-dev \
+    libavif-dev \
+    # Video processing
+    ffmpeg \
+    ffmpeg-dev \
+    # Audio processing
+    lame \
+    flac \
+    vorbis-tools \
+    # Raw image support (for ARW, CR2, NEF, etc.)
+    libraw-dev \
+    exiftool \
+    # Additional useful tools
+    ghostscript \
+    && docker-php-ext-configure gd \
+        --with-freetype \
+        --with-jpeg \
+        --with-webp \
     && docker-php-ext-install \
-    zip
+        zip \
+        gd \
+        exif \
+    # Install ImageMagick PHP extension
+    && apk add --no-cache --virtual .build-deps \
+        autoconf \
+        gcc \
+        g++ \
+        make \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick \
+    && apk del .build-deps
 
 # Set working directory
 WORKDIR /var/www/html
+
+# Configure PHP for multimedia processing
+RUN echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/multimedia.ini \
+    && echo "upload_max_filesize = 100M" >> /usr/local/etc/php/conf.d/multimedia.ini \
+    && echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/multimedia.ini \
+    && echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/multimedia.ini \
+    && echo "max_input_time = 300" >> /usr/local/etc/php/conf.d/multimedia.ini
 
 # Copy application files
 COPY tinyfilemanager.php index.php
